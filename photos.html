@@ -38,7 +38,7 @@
           <div class="upload-box">
             <input type="file" class="upload-input" accept="image/*">
             <div class="label-container"></div>
-            <button class="add-label-btn">Add Label</button>
+            <button class="add-label-btn">Add New Label</button>
             <button class="upload-btn">Upload</button>
           </div>
         </div>
@@ -50,7 +50,6 @@
       </div>
     </div>
   </div>
-
 
   <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/axios/dist/axios.standalone.js"></script>
   <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/CryptoJS/rollups/hmac-sha256.js"></script>
@@ -74,7 +73,7 @@
 
     // Function to create a new label input field and "Add" button
     function createNewLabelInput() {
-      // Create a new div to hold the label input and "Add" button
+      // Create a new div to hold the label input and "Remove" button
       const labelGroup = document.createElement('div');
       labelGroup.classList.add('label-group');
 
@@ -84,21 +83,17 @@
       labelInput.classList.add('label-input');
       labelInput.placeholder = 'Enter a label';
 
-      // Create the "Add" button
-      const addButton = document.createElement('button');
-      addButton.textContent = 'Add';
-      addButton.addEventListener('click', () => {
-        // Get the label from the input field and add it to the labelInputs array
-        const label = labelInput.value.trim();
-        if (label !== '') {
-          labelInputs.push(label);
-          console.log('Labels:', labelInputs);
-        }
+      // Create the "Remove" button
+      const removeButton = document.createElement('button');
+      removeButton.textContent = 'Remove';
+      removeButton.addEventListener('click', () => {
+        // Remove the label input field and the "Remove" button from the display
+        labelGroup.remove();
       });
 
-      // Append the label input and "Add" button to the label group
+      // Append the label input and "Remove" button to the label group
       labelGroup.appendChild(labelInput);
-      labelGroup.appendChild(addButton);
+      labelGroup.appendChild(removeButton);
 
       // Append the label group to the label container
       labelContainer.appendChild(labelGroup);
@@ -110,27 +105,31 @@
     });
 
     uploadBtn.addEventListener('click', () => {
-    const uploadedImage = document.querySelector('.upload-input').files[0];
-    console.log(uploadedImage.type)
-    const labels = ["universalLabel"];
-    const labelInputs = document.querySelectorAll('.label-input');
-    labelInputs.forEach(labelInput => {
-      const label = labelInput.value.trim();
-      if (label !== '') {
-        labels.push(label);
+      const uploadedImage = document.querySelector('.upload-input').files[0];
+      if (uploadedImage === undefined) {
+        alert('Please select an image to upload.');
+        return;
       }
-    });
+      console.log(uploadedImage.type)
+      const labels = [];
+      const labelInputs = document.querySelectorAll('.label-input');
+      labelInputs.forEach(labelInput => {
+        const label = labelInput.value.trim();
+        if (label !== '') {
+          labels.push(label);
+        }
+      });
 
     // Prepare the request parameters
     const filename = encodeURIComponent(uploadedImage.name);
     const params = {
       filename: filename,
-      'x-amz-meta-customLabels': JSON.stringify(labels)
+      'x-amz-meta-customLabels': JSON.stringify(labels),
+      'Content-Type': 'text/64'
     };
     const additionalParams = {
       headers: {
-        'x-api-key': '2BvpuYQU8M85XXeQui1nK4hJbJ4zGcVz8ksiXJBJ',
-        'Content-Type': 'text/base64'
+        'x-api-key': '2BvpuYQU8M85XXeQui1nK4hJbJ4zGcVz8ksiXJBJ'
       }
     };
 
@@ -138,9 +137,9 @@
     const fileReader = new FileReader();
     fileReader.readAsDataURL(uploadedImage);
     fileReader.onload = (event) => {
+      console.log(fileReader.result)
       const file_as_base64 = fileReader.result.split(";base64,")[1]
-
-      console.log('Size of imageArrayBuffer:', file_as_base64.byteLength);
+      console.log(file_as_base64)
       console.log('Type of imageArrayBuffer:', file_as_base64.type)
 
       // Invoke the API Gateway endpoint for uploading the image
@@ -216,14 +215,17 @@
             photoGallery.innerHTML = '';
 
             // Get the hits from the search result
-            const hits = result?.data?.body?.hits?.hits ?? [];
+            const hits = result?.data?.hits?.hits ?? [];
+            
+            console.log(hits);
 
-            // Loop through the hits and create a new div for each image
             hits.forEach(hit => {
-              const imageUrl = hit.signed_url; // Replace with the correct attribute for the image URL
+              // Make sure to replace "hit.signed_url" with the correct attribute for the image URL
+              const imageUrl = hit.signed_url;
               const photoBox = document.createElement('div');
               photoBox.classList.add('photo-box');
-              photoBox.style.backgroundImage = `url(${imageUrl})`;
+              // Set the background image using the style property
+              photoBox.style.backgroundImage = `url('${imageUrl}')`;
               photoGallery.appendChild(photoBox);
             });
 
