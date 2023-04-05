@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A photo album web application with natural language search support for text and voice input.">
+  <meta name="author" content="Your Name">
+
+  <link rel="stylesheet" type="text/css" href="assets/css/main.css">
+
+  <title>Photo Album (TESTING CodePipeline)</title>
+</head>
+
+<body>
+  <div class="site-wrapper">
+    <div class="site-wrapper-inner">
+      <div class="cover-container">
+        <div class="masthead clearfix">
+          <div class="inner">
+            <h3 class="masthead-brand">Photo Album</h3>
+          </div>
+        </div>
+
+        <div class="search-container">
+          <div class="search-box">
+            <input type="text" class="search-input" placeholder="Type or speak your search...">
+            <button class="voice-btn">🎤</button>
+          </div>
+          <!-- Add an element to display the searched text -->
+          <div class="searched-text"></div>
+
+        </div>
+
+        <div class="upload-container">
+          <h3>Upload Image</h3>
+          <div class="upload-box">
+            <input type="file" class="upload-input" accept="image/*">
+            <div class="label-container"></div>
+            <button class="add-label-btn">Add Label</button>
+            <button class="upload-btn">Upload</button>
+          </div>
+        </div>
+
+        <div class="photo-gallery">
+          <!-- The images will be displayed here -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/axios/dist/axios.standalone.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/CryptoJS/rollups/hmac-sha256.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/CryptoJS/rollups/sha256.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/CryptoJS/components/hmac.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/CryptoJS/components/enc-base64.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/url-template/url-template.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/apiGatewayCore/sigV4Client.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/apiGatewayCore/apiGatewayClient.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/apiGatewayCore/simpleHttpClient.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/lib/apiGatewayCore/utils.js"></script>
+  <script type="text/javascript" src="assets/js/apiGateway-js-sdk/apigClient.js"></script>
+  <script>
+
+    var apigClient = apigClientFactory.newClient();
+
+    const labelContainer = document.querySelector('.label-container');
+    const addLabelBtn = document.querySelector('.add-label-btn');
+    const uploadBtn = document.querySelector('.upload-btn');
+    const labelInputs = []; // Array to store the labels added by the user
+
+    // Function to create a new label input field and "Add" button
+    function createNewLabelInput() {
+      // Create a new div to hold the label input and "Add" button
+      const labelGroup = document.createElement('div');
+      labelGroup.classList.add('label-group');
+
+      // Create the label input field
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.classList.add('label-input');
+      labelInput.placeholder = 'Enter a label';
+
+      // Create the "Add" button
+      const addButton = document.createElement('button');
+      addButton.textContent = 'Add';
+      addButton.addEventListener('click', () => {
+        // Get the label from the input field and add it to the labelInputs array
+        const label = labelInput.value.trim();
+        if (label !== '') {
+          labelInputs.push(label);
+          console.log('Labels:', labelInputs);
+        }
+      });
+
+      // Append the label input and "Add" button to the label group
+      labelGroup.appendChild(labelInput);
+      labelGroup.appendChild(addButton);
+
+      // Append the label group to the label container
+      labelContainer.appendChild(labelGroup);
+    }
+
+    // Add an event listener to the "Add Label" button
+    addLabelBtn.addEventListener('click', () => {
+      createNewLabelInput();
+    });
+
+    uploadBtn.addEventListener('click', () => {
+    const uploadedImage = document.querySelector('.upload-input').files[0];
+    console.log(uploadedImage.type)
+    const labels = ["universalLabel"];
+    const labelInputs = document.querySelectorAll('.label-input');
+    labelInputs.forEach(labelInput => {
+      const label = labelInput.value.trim();
+      if (label !== '') {
+        labels.push(label);
+      }
+    });
+
+    // Prepare the request parameters
+    const filename = encodeURIComponent(uploadedImage.name);
+    const params = {
+      filename: filename,
+      'x-amz-meta-customLabels': JSON.stringify(labels)
+    };
+    const additionalParams = {
+      headers: {
+        'x-api-key': '2BvpuYQU8M85XXeQui1nK4hJbJ4zGcVz8ksiXJBJ',
+        'Content-Type': 'text/base64'
+      }
+    };
+
+    // Read the image file as an ArrayBuffer
+    const fileReader = new FileReader();
+    fileReader.readAsDataURL(uploadedImage);
+    fileReader.onload = (event) => {
+      const file_as_base64 = fileReader.result.split(";base64,")[1]
+
+      console.log('Size of imageArrayBuffer:', file_as_base64.byteLength);
+      console.log('Type of imageArrayBuffer:', file_as_base64.type)
+
+      // Invoke the API Gateway endpoint for uploading the image
+      apigClient.uploadFilenamePut(params, file_as_base64, additionalParams)
+        .then(function(result) {
+          console.log('Upload successful:', result);
+            // Display a success message to the user
+            const uploadContainer = document.querySelector('.upload-container');
+            const successMessage = document.createElement('p');
+            successMessage.textContent = 'Image uploaded successfully!';
+            successMessage.classList.add('success-message');
+            uploadContainer.appendChild(successMessage);
+        }).catch(function(error) {
+          console.error('Upload failed:', error);
+
+          // Display an error message to the user
+          const uploadContainer = document.querySelector('.upload-container');
+          const errorMessage = document.createElement('p');
+          errorMessage.textContent = 'Image upload failed.';
+          errorMessage.classList.add('error-message');
+          uploadContainer.appendChild(errorMessage);
+        });
+    };
+  });
+
+  // Define the variable searchInput and assign it to the input element with the class "search-input"
+  const searchInput = document.querySelector('.search-input');
+  const searchedTextElement = document.querySelector('.searched-text'); // Get the element to display the searched text
+
+
+  // Add an event listener to the search input field
+  searchInput.addEventListener('keydown', (event) => {
+    // Check if the key pressed is the "Enter" key
+    if (event.keyCode === 13) {
+      // Prevent the default behavior of the "Enter" key
+      event.preventDefault();
+
+      // Get the search text from the input field
+      const searchText = searchInput.value.trim();
+
+      // Check if the search text is not empty
+      if (searchText !== '') {
+        // Prepare the request parameters
+        const params = {
+          q: searchText // Set the search text as the query parameter "q"
+        };
+        const body = {}; // No request body is needed for this GET request
+        const additionalParams = {
+          headers: {
+            // Add any additional headers if needed
+          }
+        };
+
+        console.log('Params:', params);
+
+         // Clear the search bar
+         searchInput.value = '';
+
+        // Update the element with the searched text
+        searchedTextElement.textContent = 'Finding results for: ' + searchText + '...';
+
+        // Invoke the API Gateway endpoint for searching
+        apigClient.searchGet(params)
+          .then(function(result) {
+            // Handle the search results here
+            console.log('Search results:', result);
+            searchedTextElement.textContent = 'Results for: ' + searchText;
+
+            // Get the photo-gallery container
+            const photoGallery = document.querySelector('.photo-gallery');
+
+            // Clear any existing images from the photo-gallery container
+            photoGallery.innerHTML = '';
+
+            // Get the hits from the search result
+            const hits = result?.data?.body?.hits?.hits ?? [];
+
+            // Loop through the hits and create a new div for each image
+            hits.forEach(hit => {
+              const imageUrl = hit.signed_url; // Replace with the correct attribute for the image URL
+              const photoBox = document.createElement('div');
+              photoBox.classList.add('photo-box');
+              photoBox.style.backgroundImage = `url(${imageUrl})`;
+              photoGallery.appendChild(photoBox);
+            });
+
+          }).catch(function(error) {
+            // Handle any errors that occurred during the search
+            console.error('Search failed:', error);
+          });
+
+          
+      }
+    }
+  });
+
+  </script>
+
+
+  <script>
+    const voiceBtn = document.querySelector('.voice-btn');
+
+    // Check if the Web Speech API is available
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      let isRecording = false;
+
+      // Set recognition options
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      // When the recognition engine returns a result
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+
+        searchInput.value = transcript;
+      };
+
+      // When the recognition engine starts listening
+      recognition.onstart = () => {
+        isRecording = true;
+        voiceBtn.innerHTML = '🛑';
+      };
+
+      // When the recognition engine stops listening
+      recognition.onend = () => {
+        isRecording = false;
+        voiceBtn.innerHTML = '🎤';
+      };
+
+      // Start or stop the recognition engine when the voice button is clicked
+      voiceBtn.addEventListener('click', () => {
+        if (!isRecording) {
+          recognition.start();
+        } else {
+          recognition.stop();
+        }
+      });
+    } else {
+      // Web Speech API is not supported
+      voiceBtn.style.display = 'none';
+    }
+
+  </script>
+</body>
+
+</html>
